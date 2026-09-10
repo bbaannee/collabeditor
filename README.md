@@ -5,10 +5,6 @@ document simultaneously, seeing each other's cursors and changes instantly,
 like a minimal Google Docs. Built to explore CRDT-based collaborative editing
 end to end: auth, real-time sync, presence, permissions, and version history.
 
-For a detailed, code-referenced walkthrough of *how* each feature works and
-*why* it's built the way it is — including two real bugs found and fixed
-during development — see [PROGRESS.md](PROGRESS.md).
-
 ## Features
 
 - Email/password auth (JWT)
@@ -23,41 +19,6 @@ during development — see [PROGRESS.md](PROGRESS.md).
   headers
 - Playwright E2E tests exercising two independent user accounts
   collaborating in real browser contexts
-
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Browser A
-        MA[Monaco Editor] <--> YA[Y.Doc + Awareness]
-    end
-    subgraph Browser B
-        MB[Monaco Editor] <--> YB[Y.Doc + Awareness]
-    end
-
-    YA <-->|Socket.io<br/>binary CRDT updates| SRV
-    YB <-->|Socket.io<br/>binary CRDT updates| SRV
-
-    subgraph Server [Node.js]
-        SRV[socket.ts] <--> ROOM[documentRooms.ts<br/>one Y.Doc per open document]
-        API[Express REST API] --> MODELS[models/]
-    end
-
-    ROOM -->|debounced save| PG[(PostgreSQL)]
-    MODELS <--> PG
-```
-
-The core idea: every open document has one **Y.Doc** (a CRDT — a data
-structure designed so concurrent edits from multiple people always merge
-deterministically, no manual conflict resolution) on the server, and one in
-each connected browser. Keystrokes become small binary "updates" relayed
-over Socket.io; cursor position and presence use the same Y.js ecosystem's
-`Awareness` protocol as a separate, non-persisted channel. Postgres only
-ever sees the final plain text, written on a debounce after edits settle —
-it has no idea a CRDT was involved.
-
-See [PROGRESS.md](PROGRESS.md) for the full breakdown of each layer, with
-the actual code and the reasoning behind it.
 
 ## Running it locally
 
