@@ -66,34 +66,6 @@ cd client
 npm run test:e2e
 ```
 
-## Known limitations (deliberately not fixed — see why)
-
-**Single server instance only.** Each open document's `Y.Doc` lives in that
-one Node process's memory (`documentRooms.ts`). A naive fix — adding
-`@socket.io/redis-adapter` so Socket.io messages route across multiple
-server instances — is not enough on its own for this app, and would be
-actively misleading to bolt on without addressing the deeper issue: two
-server instances would each hold their **own independent copy** of the same
-document's `Y.Doc`. The Redis adapter only relays *socket messages* between
-instances' connected clients; it does not reconcile the two instances' own
-in-memory CRDT state or their independent debounced Postgres saves — which
-could silently race and overwrite each other's content. A correct solution
-needs either (a) sticky routing so every connection for a given `documentId`
-always lands on the same instance, or (b) replacing the in-memory `Y.Doc`
-store with something like [`y-redis`](https://github.com/yjs/y-redis),
-purpose-built to keep Y.js document state itself consistent across
-processes. Neither was implemented here — this is flagged as the honest
-next step rather than shipped half-working.
-
-**No offline support.** The `Y.Doc` exists only in browser memory; a page
-refresh mid-disconnect loses any unsent edits. Adding
-[`y-indexeddb`](https://github.com/yjs/y-indexeddb) to mirror the document
-into the browser's IndexedDB would fix this.
-
-**JWTs can't be revoked.** A 7-day token is valid until it expires, with no
-server-side session to invalidate on logout. A refresh-token pattern would
-close this gap.
-
 ## Tech stack
 
 - **Frontend:** React, TypeScript, Monaco Editor, Y.js, Socket.io-client
